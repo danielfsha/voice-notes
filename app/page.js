@@ -12,6 +12,9 @@ import {
   useMicrophone,
 } from "../context/MicrophoneContextProvider";
 
+import { db } from "@/firebase.config";
+import { collection, addDoc } from "firebase/firestore";
+
 const App = () => {
   const [caption, setCaption] = useState("Get started");
   const [note, setNote] = useState("");
@@ -115,15 +118,27 @@ const App = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [microphoneState, connectionState]);
 
-  const saveNotes = () => {
-    const blob = new Blob([note], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'captions.txt';
-    a.click();
-    URL.revokeObjectURL(url);
+  const saveNotes = async () => {
+    if (!note) {
+      alert("No notes to save!");
+      return;
+    }
+
+    try {
+      const notesCollection = collection(db, "notes");
+      const docRef = await addDoc(notesCollection, {
+        content: note,
+        createdAt: new Date()
+      });
+      console.log("Document written with ID: ", docRef.id);
+      alert("Note saved successfully!");
+      setNote(""); // Clear the note after saving
+    } catch (e) {
+      console.error("Error adding document: ", e);
+      alert("Failed to save note. Please try again.");
+    }
   };
+
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-x-hidden items-center justify-center p-4">
@@ -135,7 +150,7 @@ const App = () => {
         {note}
       </div>
       <div className="flex space-x-4">
-        {isRecording && !note ? (
+        {isRecording ? (
           <button
             onClick={stopRecording}
             className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
